@@ -1,8 +1,6 @@
 package main
 
 import (
-	"log"
-
 	"github.com/arthurDiff/pfm/internal/stun"
 	"github.com/spf13/cobra"
 )
@@ -12,21 +10,24 @@ var rootCmd = &cobra.Command{
 	Use:   "pfm",
 	Short: "Port forward designated port and make it accesible",
 	Long: `Port forward given port so your friend can access your destination.
-	pfm --stun stun:stun1.l.google.com:3478`,
+	pfm --platform linux --port --stun stun:stun1.l.google.com:3478`,
 	Run: portForwardMe,
 }
 
+var (
+	// for firewall config
+	platform string
+	port     uint16
+	// for stun server
+	stunAddr string
+)
+
 func portForwardMe(cmd *cobra.Command, args []string) {
-	flags := cmd.Flags()
-	stunAddr, err := flags.GetString("stun")
-	if err != nil {
-		log.Fatalf("Failed to get stun flag value error %v", err)
-	}
 	stunClient := stun.NewClient(stunAddr)
 	defer stunClient.Close()
 
 	// TODO
-	// CONFIG FIREWALL TO PROVIDED OPEN PORT
+	// CONFIG FIREWALL TO PROVIDED OPEN PORT (Defer reset firewall setting)
 	// IN FOR LOOP
 	// - SHOULD GET CURRENTLY CONFIGURED DNS IP
 	// - GET ACTUAL IP
@@ -35,7 +36,13 @@ func portForwardMe(cmd *cobra.Command, args []string) {
 }
 
 func init() {
-	rootCmd.Flags().StringP("stun", "s", "stun:stun1.l.google.com:3478", "STUN address to use. (Default: stun:stun1.l.google.com:3478)")
+	rootCmd.Flags().StringVar(&platform, "platform", "", "OS Platform (supports linux or windows)")
+	rootCmd.MarkFlagRequired("platform")
+
+	rootCmd.Flags().Uint16VarP(&port, "port", "p", 0, "Port to forward request to")
+	rootCmd.MarkFlagRequired("port")
+
+	rootCmd.Flags().StringVarP(&stunAddr, "stun", "s", "stun:stun1.l.google.com:3478", "STUN address to use")
 }
 
 func main() {

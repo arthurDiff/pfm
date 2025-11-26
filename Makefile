@@ -7,7 +7,7 @@ build:
 
 # Run the application
 run:
-	@go run --race cmd/cli/main.go
+	@go run --race cmd/cli/main.go --platform linux --port 8080
 
 # Test the application
 test:
