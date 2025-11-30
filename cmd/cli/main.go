@@ -34,6 +34,7 @@ func portForwardMe(cmd *cobra.Command, args []string) {
 
 	// TODO
 	// CONFIG FIREWALL TO PROVIDED OPEN PORT (Defer reset firewall setting)
+	// CONFIG UPNP TO add specified port forwarding setup (Defer reset)
 	// IN FOR LOOP
 	// - SHOULD GET CURRENTLY CONFIGURED DNS IP
 	// - GET ACTUAL IP
