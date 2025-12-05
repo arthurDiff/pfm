@@ -39,9 +39,9 @@ func (r *rule) append(ipt *iptables) error {
 }
 
 func (r *rule) delete(ipt *iptables) error {
-	if r.preexisted {
-		return nil
-	}
+	// if r.preexisted {
+	// 	return nil
+	// }
 	return ipt.binding.DeleteIfExists("filter", r.chain, r.rulespecs...)
 }
 

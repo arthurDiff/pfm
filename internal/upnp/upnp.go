@@ -21,6 +21,8 @@ type RouterClient interface {
 		NewLeaseDuration uint32,
 	) (err error)
 
+	DeletePortMapping(NewRemoteHost string, NewExternalPort uint16, NewProtocol string) (err error)
+
 	GetExternalIPAddress() (
 		NewExternalIPAddress string,
 		err error,
@@ -56,6 +58,7 @@ func NewClient() (RouterClient, error) {
 		return nil, err
 	}
 
+	// Handle multiple client return in the future
 	switch {
 	case len(ip2Clients) == 1:
 		return ip2Clients[0], nil

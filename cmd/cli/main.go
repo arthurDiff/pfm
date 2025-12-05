@@ -2,7 +2,6 @@ package main
 
 import (
 	"bufio"
-	"fmt"
 	"log"
 	"os"
 
@@ -11,13 +10,13 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// https://github.com/spf13/cobra
+// https://dev.to/pradumnasaraf/how-to-publish-a-golang-package-i12
 var rootCmd = &cobra.Command{
 	Use:   "pfm",
 	Short: "Port forward designated port and make it accesible",
 	Long: `Port forward given port so your friend can access your destination. 
 	(ONLY SUPPORTS LINUX FOR NOW)
-	pfm --port 25565 --protocol tcp --firewall iptables --stun stun:stun1.l.google.com:3478`,
+	pfm --port 25565 --protocol tcp --firewall iptables`,
 	Run: portForwardMe,
 }
 
@@ -26,11 +25,19 @@ var (
 	port uint16
 	// protocol tcp || udp
 	protocol string
-	// for stun server
-	stunAddr string
 	// for firewall config
 	firewallProvider string
 )
+
+var reader = bufio.NewReader(os.Stdin)
+
+func getKeyPress(input chan<- rune) {
+	char, _, err := reader.ReadRune()
+	if err != nil {
+		log.Panic(err)
+	}
+	input <- char
+}
 
 func portForwardMe(cmd *cobra.Command, args []string) {
 	provider, err := firewall.GetProvider(firewallProvider)
@@ -54,34 +61,39 @@ func portForwardMe(cmd *cobra.Command, args []string) {
 	}
 	defer ruleset.Close()
 
-	fmt.Println("Initializing UPNP")
+	log.Println("Initializing UPNP")
 	upnpClient, err := upnp.NewClient()
 	if err != nil {
 		log.Panicln(err)
 	}
 
-	externIp, err := upnpClient.GetExternalIPAddress()
+	externAddr, err := upnpClient.GetExternalIPAddress()
 	if err != nil {
 		log.Panicln(err)
 	}
 
-	fmt.Println(externIp)
+	log.Printf("Start UPnP Port Mapping")
+
+	localAddr := upnpClient.LocalAddr()
+	// One Hour Lease
+	if err := upnpClient.AddPortMapping("", port, string(protocol), port, localAddr.String(), true, "portforwardme", 0); err != nil {
+		log.Panicln(err)
+	}
+	defer upnpClient.DeletePortMapping("", port, string(protocol))
+
+	log.Printf("Port Forwarding Mapped Successfully!\nExtern: %v:%v | Local: %v:%v\nPress q to quit", externAddr, port, localAddr, port)
+	input := make(chan rune, 1)
+	go getKeyPress(input)
 
 	for {
-		scanner := bufio.NewScanner(os.Stdin)
-		scanner.Scan()
-		input := scanner.Text()
-		fmt.Printf("input: %v\n", input)
-		break
+		i := <-input
+		if i == 'q' {
+			break
+		}
+		log.Printf("Pressed %v but only supports q to quit", i)
+		go getKeyPress(input)
 	}
-	// TODO
-	// CONFIG FIREWALL TO PROVIDED OPEN PORT (Defer reset firewall setting)
-	// CONFIG UPNP TO add specified port forwarding setup (Defer reset)
-	// IN FOR LOOP
-	// - SHOULD GET CURRENTLY CONFIGURED DNS IP
-	// - GET ACTUAL IP
-	// -- IF MISMATCH UPDATE CONFIG
-	// MAYBE PANIC NOTIFIER
+	log.Println("Stopping Execution...")
 }
 
 func init() {
@@ -91,8 +103,6 @@ func init() {
 	rootCmd.Flags().StringVar(&protocol, "protocol", "tcp", "Protocol to listen to (supports tcp or udp)")
 
 	rootCmd.Flags().StringVarP(&firewallProvider, "firewall", "f", "iptables", "Firewall provider name (currently supports iptables only)")
-
-	rootCmd.Flags().StringVarP(&stunAddr, "stun", "s", "stun:stun1.l.google.com:3478", "STUN address to use")
 }
 
 func main() {
